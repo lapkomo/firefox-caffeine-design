@@ -4,6 +4,7 @@ const DEFAULT_STATE = {
   status: 'not-configured',
 };
 
+const NATIVE_HOST_NAME = 'firefox_caffeine';
 const browserApi = typeof browser !== 'undefined' ? browser : chrome;
 
 async function ensureState() {
@@ -13,20 +14,50 @@ async function ensureState() {
   return settings;
 }
 
+async function checkHelperAvailability() {
+  try {
+    const response = await browserApi.runtime.sendNativeMessage(NATIVE_HOST_NAME, {
+      action: 'probe',
+      timestamp: Date.now(),
+    });
+
+    const helperInstalled = Boolean(response && response.status === 'ok');
+    const settings = await ensureState();
+    const nextSettings = {
+      ...settings,
+      helperInstalled,
+      status: helperInstalled ? 'helper-ready' : 'helper-missing',
+    };
+
+    await browserApi.storage.local.set({ settings: nextSettings });
+    return { ok: true, settings: nextSettings, response };
+  } catch (error) {
+    const settings = await ensureState();
+    const nextSettings = {
+      ...settings,
+      helperInstalled: false,
+      status: 'helper-missing',
+    };
+
+    await browserApi.storage.local.set({ settings: nextSettings });
+    return { ok: false, settings: nextSettings, error: String(error) };
+  }
+}
+
 browserApi.runtime.onInstalled.addListener(async () => {
-  const settings = await ensureState();
+  const settings = await checkHelperAvailability();
   console.log('Firefox Caffeine initialized', settings);
 });
 
 browserApi.runtime.onStartup.addListener(async () => {
-  const settings = await ensureState();
+  const settings = await checkHelperAvailability();
   console.log('Firefox Caffeine startup', settings);
 });
 
 browserApi.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message && message.type === 'setup-check') {
-    ensureState().then((settings) => {
-      sendResponse({ ok: true, settings });
+    checkHelperAvailability().then((result) => {
+      sendResponse(result);
     });
     return true;
   }
