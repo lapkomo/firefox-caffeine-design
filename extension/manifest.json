@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "Firefox Caffeine",
+  "version": "0.1.0",
+  "description": "Prevent macOS sleep while downloads are active.",
+  "permissions": [
+    "downloads",
+    "storage",
+    "nativeMessaging"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "scripts": [
+      "src/background.js"
+    ]
+  },
+  "action": {
+    "default_title": "Firefox Caffeine",
+    "default_popup": "src/popup.html"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "firefox-caffeine@lapkomo.example"
+    }
+  }
+}
